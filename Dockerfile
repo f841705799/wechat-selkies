@@ -13,6 +13,7 @@ LABEL org.opencontainers.image.licenses="GPL-3.0-only"
 # Build arguments for multi-arch support
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
+ARG QQ_URL
 ARG INSTALL_QQ=true
 ARG INSTALL_PCMANFM=true
 RUN echo "🏗️ Building WeChat-Selkies on $BUILDPLATFORM, targeting $TARGETPLATFORM"
@@ -59,24 +60,18 @@ RUN case "$TARGETPLATFORM" in \
 
 # Install QQ based on target architecture (optional)
 ARG INSTALL_QQ
+ARG QQ_URL
 RUN if [ "$INSTALL_QQ" = "true" ]; then \
-        case "$TARGETPLATFORM" in \
-        "linux/amd64") \
-            QQ_URL="https://dldir1v6.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.22_251203_amd64_01.deb"; \
-            QQ_ARCH="x86_64" ;; \
-        "linux/arm64") \
-            QQ_URL="https://dldir1v6.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.22_251203_arm64_01.deb"; \
-            QQ_ARCH="arm64" ;; \
-        *) \
-            echo "❌ Unsupported platform: $TARGETPLATFORM" >&2; \
-            exit 1 ;; \
-        esac && \
-        echo "📦 Downloading QQ for $QQ_ARCH architecture..." && \
-        curl -fsSL --retry 3 --retry-delay 10 --retry-all-errors -o qq.deb "$QQ_URL" && \
+        if [ -z "$QQ_URL" ]; then \
+            echo "❌ QQ_URL is not set"; exit 1; \
+        fi && \
+        echo "📦 Downloading QQ from $QQ_URL" && \
+        curl -fsSL --retry 3 --retry-delay 10 --retry-all-errors \
+          -o qq.deb "$QQ_URL" && \
         echo "🔧 Installing QQ..." && \
         (dpkg -i qq.deb || (apt-get update && apt-get install -f -y && dpkg -i qq.deb)) && \
         rm -f qq.deb && \
-        echo "✅ QQ installation completed for $QQ_ARCH"; \
+        echo "✅ QQ installation completed"; \
     else \
         echo "⏭️ Skipping QQ installation (INSTALL_QQ=$INSTALL_QQ)"; \
     fi
