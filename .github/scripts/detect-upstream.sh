@@ -30,7 +30,7 @@ WECHAT_ARM64_URL="${WECHAT_ARM64_URL:-https://dldir1v6.qq.com/weixin/Universal/L
 # -----------------------------
 # QQ config
 # -----------------------------
-QQ_CONFIG_URL="${QQ_CONFIG_URL:-https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/pcConfig.json}"
+QQ_CONFIG_URL="${QQ_CONFIG_URL:-https://qq-web.cdn-go.cn/im.qq.com_new/latest/rainbow/pcConfig.json}"
 
 # -----------------------------
 # Helpers
