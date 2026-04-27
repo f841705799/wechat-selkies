@@ -25,9 +25,29 @@ jobs:
       id-token: write
       attestations: write
 
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            qq_url_var: QQ_AMD64_URL
+          - platform: linux/arm64
+            qq_url_var: QQ_ARM64_URL
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Load upstream.env
+      id: upstream
+      run: |
+        set -a
+        source versions/upstream.env
+        set +a
+
+        echo "qq_url=${!qq_url_var}" >> "$GITHUB_OUTPUT"
+        echo "wechat_version=${WECHAT_AMD64_VERSION}" >> "$GITHUB_OUTPUT"
+      env:
+        qq_url_var: ${{ matrix.qq_url_var }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -67,13 +87,19 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          INSTALL_QQ=true
+          QQ_URL=${{ steps.upstream.outputs.qq_url }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
+    # -----------------------------
+    # Build MINIMAL image (WeChat only)
+    # -----------------------------
     - name: Extract metadata for minimal image
       id: meta-minimal
       uses: docker/metadata-action@v5
@@ -91,11 +117,10 @@ jobs:
           type=raw,value=minimal,enable=${{ github.ref == format('refs/heads/{0}', 'master') || startsWith(github.ref, 'refs/tags/') }}
 
     - name: Build and push minimal Docker image
-      id: build-minimal
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
         tags: ${{ steps.meta-minimal.outputs.tags }}
         labels: ${{ steps.meta-minimal.outputs.labels }}
@@ -110,7 +135,7 @@ jobs:
       uses: actions/attest-build-provenance@v1
       with:
         subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        subject-digest: ${{ steps.build-image.outputs.digest }}
+        subject-digest: ${{ steps.meta.outputs.digest }}
         push-to-registry: true
 
     - name: Output Docker image information
@@ -145,7 +170,7 @@ jobs:
           echo "### Docker Hub" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **Skipped** - Docker Hub push disabled (set ENABLE_DOCKERHUB=true to enable)" >> $GITHUB_STEP_SUMMARY
         fi
-
+        
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
